@@ -117,7 +117,6 @@
       const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
       const [tasks, setTasks] = useState({});
       const [darkMode, setDarkMode] = useState(false);
-      const [showStats, setShowStats] = useState(true);
 
       // Load tasks from storage
       useEffect(() => {
@@ -159,7 +158,8 @@
           id: Date.now(),
           text: '',
           done: false,
-          accepting: 0
+          target: 0,
+          current: 0
         };
         
         setTasks({
@@ -225,17 +225,40 @@
       const getStats = () => {
         let total = 0;
         let completed = 0;
+        let totalCounter = 0;
+        let completedCounter = 0;
         
         Object.values(tasks).forEach(weekTasks => {
           weekTasks.forEach(task => {
             if (task.text.trim()) {
-              total++;
-              if (task.done) completed++;
+              if (task.target > 0) {
+                // Counter-based task
+                totalCounter += task.target;
+                completedCounter += task.current;
+              } else {
+                // Regular checkbox task
+                total++;
+                if (task.done) completed++;
+              }
             }
           });
         });
         
-        return { total, completed, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
+        const checkboxPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const counterPercentage = totalCounter > 0 ? Math.round((completedCounter / totalCounter) * 100) : 0;
+        const overallPercentage = (total + totalCounter) > 0 
+          ? Math.round(((completed + completedCounter) / (total + totalCounter)) * 100) 
+          : 0;
+        
+        return { 
+          total, 
+          completed, 
+          totalCounter, 
+          completedCounter,
+          checkboxPercentage,
+          counterPercentage,
+          overallPercentage
+        };
       };
 
       const stats = getStats();
@@ -245,12 +268,12 @@
           {/* Header */}
           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm sticky top-0 z-10`}>
             <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold">Monthly To-Do Tracker</h1>
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <h1 className="text-xl sm:text-2xl font-bold">Monthly To-Do Tracker</h1>
                 
-                <div className="flex items-center gap-2">
-                  <label className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-medium ${
-                    darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-medium touch-manipulation ${
+                    darkMode ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-200'
                   }`}>
                     <Upload /> Import
                     <input type="file" accept=".json" onChange={importData} className="hidden" />
@@ -258,8 +281,8 @@
                   
                   <button
                     onClick={exportData}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                      darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
+                    className={`px-3 py-2 rounded-lg text-sm font-medium touch-manipulation ${
+                      darkMode ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-200'
                     }`}
                   >
                     <Download /> Export
@@ -267,8 +290,8 @@
                   
                   <button
                     onClick={() => setDarkMode(!darkMode)}
-                    className={`p-2 rounded-lg ${
-                      darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
+                    className={`p-2 rounded-lg touch-manipulation ${
+                      darkMode ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-200'
                     }`}
                   >
                     {darkMode ? <Sun /> : <Moon />}
@@ -277,12 +300,12 @@
               </div>
 
               {/* Month/Year Selector */}
-              <div className="flex items-center gap-4">
-                <div className="relative">
+              <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                <div className="relative flex-1 min-w-[140px]">
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className={`appearance-none px-4 py-2 pr-10 rounded-lg font-medium cursor-pointer ${
+                    className={`appearance-none w-full px-3 sm:px-4 py-2 sm:py-2.5 pr-10 rounded-lg font-medium cursor-pointer text-sm sm:text-base touch-manipulation ${
                       darkMode ? 'bg-gray-700' : 'bg-gray-100'
                     }`}
                   >
@@ -295,11 +318,11 @@
                   </div>
                 </div>
 
-                <div className="relative">
+                <div className="relative w-[100px] sm:w-auto">
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className={`appearance-none px-4 py-2 pr-10 rounded-lg font-medium cursor-pointer ${
+                    className={`appearance-none w-full px-3 sm:px-4 py-2 sm:py-2.5 pr-10 rounded-lg font-medium cursor-pointer text-sm sm:text-base touch-manipulation ${
                       darkMode ? 'bg-gray-700' : 'bg-gray-100'
                     }`}
                   >
@@ -314,42 +337,73 @@
               </div>
 
               {/* Stats Bar */}
-              {showStats && (
-                <div className={`mt-4 p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Monthly Progress</span>
-                    <span className="text-sm font-bold">{stats.completed}/{stats.total} tasks ({stats.percentage}%)</span>
+              <div className={`mt-4 p-3 sm:p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
+                <div className="space-y-3">
+                  {/* Overall Progress */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <span className="text-xs sm:text-sm font-medium">Overall Progress</span>
+                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap">
+                        {stats.completed + stats.completedCounter}/{stats.total + stats.totalCounter} ({stats.overallPercentage}%)
+                      </span>
+                    </div>
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                      <div
+                        className="h-full bg-blue-500 transition-all duration-300"
+                        style={{ width: `${stats.overallPercentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}>
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-300"
-                      style={{ width: `${stats.percentage}%` }}
-                    />
-                  </div>
+
+                  {/* Breakdown */}
+                  {(stats.total > 0 || stats.totalCounter > 0) && (
+                    <div className="flex gap-4 text-xs sm:text-sm">
+                      {stats.total > 0 && (
+                        <div className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                          Tasks: {stats.completed}/{stats.total} ({stats.checkboxPercentage}%)
+                        </div>
+                      )}
+                      {stats.totalCounter > 0 && (
+                        <div className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                          Counters: {stats.completedCounter}/{stats.totalCounter} ({stats.counterPercentage}%)
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
           {/* Weeks Grid */}
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {weeks.map(week => {
                 const weekKey = `week-${week.weekNum}`;
                 const weekTasks = tasks[weekKey] || [];
-                const completedCount = weekTasks.filter(t => t.done && t.text.trim()).length;
+                const completedCount = weekTasks.filter(t => t.text.trim() && (t.done || (t.target > 0 && t.current >= t.target))).length;
                 const totalCount = weekTasks.filter(t => t.text.trim()).length;
+                
+                // Calculate counter progress for the week
+                let weekCounterCurrent = 0;
+                let weekCounterTotal = 0;
+                weekTasks.forEach(t => {
+                  if (t.text.trim() && t.target > 0) {
+                    weekCounterCurrent += t.current;
+                    weekCounterTotal += t.target;
+                  }
+                });
 
                 return (
                   <div
                     key={week.weekNum}
-                    className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-5`}
+                    className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-4 sm:p-5`}
                   >
                     {/* Week Header */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
                       <div>
-                        <h2 className="text-lg font-bold">Week {week.weekNum}</h2>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <h2 className="text-base sm:text-lg font-bold">Week {week.weekNum}</h2>
+                        <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {months[selectedMonth]} {week.startDate}-{week.endDate}
                         </p>
                       </div>
@@ -362,78 +416,131 @@
                             {Math.round((completedCount / totalCount) * 100)}%
                           </div>
                         )}
+                        {weekCounterTotal > 0 && (
+                          <div className={`text-xs ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                            {weekCounterCurrent}/{weekCounterTotal}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Tasks */}
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {weekTasks.map(task => (
-                        <div key={task.id} className="flex items-start gap-3 group">
-                          {/* Checkbox */}
-                          <button
-                            onClick={() => updateTask(week.weekNum, task.id, 'done', !task.done)}
-                            className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                              task.done
-                                ? 'bg-blue-500 border-blue-500'
-                                : darkMode
-                                ? 'border-gray-600 hover:border-gray-500'
-                                : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                          >
-                            {task.done && <Check />}
-                          </button>
+                        <div key={task.id} className="space-y-2">
+                          <div className="flex items-start gap-2 sm:gap-3 group">
+                            {/* Checkbox */}
+                            <button
+                              onClick={() => updateTask(week.weekNum, task.id, 'done', !task.done)}
+                              className={`mt-1 w-6 h-6 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors touch-manipulation ${
+                                task.done || (task.target > 0 && task.current >= task.target)
+                                  ? 'bg-blue-500 border-blue-500'
+                                  : darkMode
+                                  ? 'border-gray-600 hover:border-gray-500 active:border-gray-500'
+                                  : 'border-gray-300 hover:border-gray-400 active:border-gray-400'
+                              }`}
+                            >
+                              {(task.done || (task.target > 0 && task.current >= task.target)) && <Check />}
+                            </button>
 
-                          {/* Task Text */}
-                          <input
-                            type="text"
-                            value={task.text}
-                            onChange={(e) => updateTask(week.weekNum, task.id, 'text', e.target.value)}
-                            placeholder="Enter task..."
-                            className={`flex-1 px-3 py-2 rounded border ${
-                              task.done ? 'line-through opacity-60' : ''
-                            } ${
-                              darkMode
-                                ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
-                                : 'bg-white border-gray-300 focus:border-blue-500'
-                            } outline-none transition-colors`}
-                          />
+                            {/* Task Text */}
+                            <input
+                              type="text"
+                              value={task.text}
+                              onChange={(e) => updateTask(week.weekNum, task.id, 'text', e.target.value)}
+                              placeholder="Enter task..."
+                              className={`flex-1 px-2 sm:px-3 py-2 rounded border text-sm sm:text-base ${
+                                task.done ? 'line-through opacity-60' : ''
+                              } ${
+                                darkMode
+                                  ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                                  : 'bg-white border-gray-300 focus:border-blue-500'
+                              } outline-none transition-colors`}
+                            />
 
-                          {/* Accepting Number */}
-                          <input
-                            type="number"
-                            value={task.accepting}
-                            onChange={(e) => updateTask(week.weekNum, task.id, 'accepting', parseInt(e.target.value) || 0)}
-                            className={`w-16 px-2 py-2 rounded border text-center ${
-                              darkMode
-                                ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
-                                : 'bg-white border-gray-300 focus:border-blue-500'
-                            } outline-none transition-colors`}
-                            min="0"
-                          />
+                            {/* Target Input */}
+                            <input
+                              type="number"
+                              value={task.target || ''}
+                              onChange={(e) => updateTask(week.weekNum, task.id, 'target', parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              className={`w-12 sm:w-14 px-1 sm:px-2 py-2 rounded border text-center text-sm sm:text-base ${
+                                darkMode
+                                  ? 'bg-gray-700 border-gray-600 focus:border-blue-500'
+                                  : 'bg-white border-gray-300 focus:border-blue-500'
+                              } outline-none transition-colors`}
+                              min="0"
+                            />
 
-                          {/* Delete Button */}
-                          <button
-                            onClick={() => deleteTask(week.weekNum, task.id)}
-                            className={`p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                              darkMode ? 'hover:bg-gray-700 text-red-400' : 'hover:bg-gray-100 text-red-500'
-                            }`}
-                          >
-                            <Trash2 />
-                          </button>
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => deleteTask(week.weekNum, task.id)}
+                              className={`p-2 rounded transition-opacity touch-manipulation ${
+                                darkMode ? 'hover:bg-gray-700 active:bg-gray-700 text-red-400' : 'hover:bg-gray-100 active:bg-gray-100 text-red-500'
+                              } opacity-100 sm:opacity-0 sm:group-hover:opacity-100`}
+                            >
+                              <Trash2 />
+                            </button>
+                          </div>
+
+                          {/* Counter Progress Bar - Shows when target > 0 */}
+                          {task.target > 0 && (
+                            <div className={`ml-8 sm:ml-8 mr-10 sm:mr-12 px-3 py-2 rounded ${
+                              darkMode ? 'bg-gray-750' : 'bg-gray-50'
+                            }`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`text-xs font-medium ${
+                                  task.current >= task.target
+                                    ? darkMode ? 'text-green-400' : 'text-green-600'
+                                    : darkMode ? 'text-gray-400' : 'text-gray-600'
+                                }`}>
+                                  Progress: {task.current || 0}/{task.target}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => updateTask(week.weekNum, task.id, 'current', Math.max(0, (task.current || 0) - 1))}
+                                    className={`w-6 h-6 rounded flex items-center justify-center text-sm font-bold touch-manipulation ${
+                                      darkMode ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300 active:bg-gray-300'
+                                    }`}
+                                  >
+                                    −
+                                  </button>
+                                  <button
+                                    onClick={() => updateTask(week.weekNum, task.id, 'current', Math.min(task.target, (task.current || 0) + 1))}
+                                    className={`w-6 h-6 rounded flex items-center justify-center text-sm font-bold touch-manipulation ${
+                                      darkMode ? 'bg-gray-700 hover:bg-gray-600 active:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300 active:bg-gray-300'
+                                    }`}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                              <div className={`w-full h-1.5 rounded-full overflow-hidden ${
+                                darkMode ? 'bg-gray-700' : 'bg-gray-200'
+                              }`}>
+                                <div
+                                  className={`h-full transition-all duration-300 ${
+                                    task.current >= task.target ? 'bg-green-500' : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, ((task.current || 0) / task.target) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
 
                       {/* Add Task Button */}
                       <button
                         onClick={() => addTask(week.weekNum)}
-                        className={`w-full py-2 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 transition-colors ${
+                        className={`w-full py-2.5 sm:py-2 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 transition-colors text-sm sm:text-base touch-manipulation ${
                           darkMode
-                            ? 'border-gray-700 hover:border-gray-600 hover:bg-gray-700'
-                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                            ? 'border-gray-700 hover:border-gray-600 active:border-gray-600 hover:bg-gray-700 active:bg-gray-700'
+                            : 'border-gray-300 hover:border-gray-400 active:border-gray-400 hover:bg-gray-50 active:bg-gray-50'
                         }`}
                       >
                         <Plus />
-                        <span className="text-sm font-medium">Add Task</span>
+                        <span className="font-medium">Add Task</span>
                       </button>
                     </div>
                   </div>
